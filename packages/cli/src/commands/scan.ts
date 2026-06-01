@@ -73,10 +73,9 @@ export async function scanCommand(options: ScanOptions) {
     process.exit(1);
   }
 }
-
 function generateSummary(reports: AnalysisReport[]) {
-    const counts = { critical: 0, high: 0, medium: 0, low: 0 };
-    reports.forEach(r => counts[r.severity]++);
+    const counts: Record<string, number> = { critical: 0, high: 0, medium: 0, low: 0 };
+    reports.forEach((r: AnalysisReport) => counts[r.severity]++);
     return counts;
 }
 
@@ -88,13 +87,14 @@ function printConsoleReport(summary: any, reports: AnalysisReport[], graph: Depe
     console.log(`- Low: ${summary.low}`);
 
     const riskyReports = reports.filter(r => r.severity === 'critical' || r.severity === 'high');
-    
+
     if (riskyReports.length > 0) {
         console.log(`\n⚠️ ${riskyReports.length} High/Critical risks found:`);
         for (const report of riskyReports) {
             console.log(`\n[${report.severity.toUpperCase()}] ${report.packageName}@${report.version} (Score: ${report.score}/100)`);
-            report.findings.forEach(f => console.log(`  - ${f.title}`));
-            
+            report.findings.forEach((f: any) => console.log(`  - ${f.title}`));
+
+            // Show one path for context
             const path = findOnePath(graph, report.packageName);
             if (path) {
                 console.log(`  Path: ${path.join(' ➔ ')}`);
@@ -104,6 +104,7 @@ function printConsoleReport(summary: any, reports: AnalysisReport[], graph: Depe
         console.log('\n✅ No high-severity risks detected.');
     }
 }
+
 
 function findOnePath(graph: DependencyGraph, targetName: string): string[] | null {
     const visited = new Set<string>();
@@ -133,14 +134,14 @@ function generateSarif(reports: AnalysisReport[]) {
             tool: {
                 driver: {
                     name: "DepGuarder",
-                    rules: Array.from(new Set(reports.flatMap(r => r.findings.map(f => ({
+                    rules: Array.from(new Set(reports.flatMap((r: AnalysisReport) => r.findings.map((f: any) => ({
                         id: f.id,
                         name: f.id,
                         shortDescription: { text: f.title }
                     })))))
                 }
             },
-            results: reports.flatMap(report => report.findings.map(finding => ({
+            results: reports.flatMap((report: AnalysisReport) => report.findings.map((finding: any) => ({
                 ruleId: finding.id,
                 message: { text: `${finding.title}: ${finding.recommendation}` },
                 level: finding.severity === 'critical' || finding.severity === 'high' ? 'error' : 'warning',

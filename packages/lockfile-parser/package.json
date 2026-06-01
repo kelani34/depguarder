@@ -27,9 +27,7 @@
   "files": [
     "dist"
   ],
-  "exports": [
-    [
-      "./dist/index.js"
-    ]
-  ]
+  "exports": {
+    ".": "./dist/index.js"
+  }
 }
