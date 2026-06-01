@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "vitest run",
-    "build": "npm run build --workspaces --if-present"
+    "build": "npm run build -w @depguarder/core -w @depguarder/lockfile-parser -w @depguarder/rules && npm run build -w depguarder -w @depguarder/github-action"
   },
   "repository": {
     "type": "git",
