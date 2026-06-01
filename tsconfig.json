@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "ignoreDeprecations": "6.0",
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "incremental": true,
+    "rootDir": ".",
+    "baseUrl": ".",
+    "outDir": "dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"],
+    "paths": {
+      "@depguarder/core": ["packages/core/src"],
+      "@depguarder/rules": ["packages/rules/src"],
+      "@depguarder/lockfile-parser": ["packages/lockfile-parser/src"]
+    }
+  },
+  "exclude": ["node_modules", "dist"]
+}

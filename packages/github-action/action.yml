@@ -1,0 +1,14 @@
+name: 'DepGuarder'
+description: 'Developer-first dependency security scanner'
+inputs:
+  fail-on:
+    description: 'Minimum severity level to fail the build (low, medium, high, critical)'
+    required: false
+    default: 'high'
+  token:
+    description: 'GitHub token for PR comments'
+    required: false
+    default: ${{ github.token }}
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "DepGuarder",
+          "rules": [
+            {
+              "id": "postinstall-script",
+              "name": "postinstall-script",
+              "shortDescription": {
+                "text": "Package has an install script"
+              }
+            },
+            {
+              "id": "typosquat-detection",
+              "name": "typosquat-detection",
+              "shortDescription": {
+                "text": "Possible typosquatting detected"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "postinstall-script",
+          "message": {
+            "text": "Package has an install script: Review the install script contents for suspicious activity before installing."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "package.json"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "typosquat-detection",
+          "message": {
+            "text": "Possible typosquatting detected: Verify that this is the intended package and not a malicious imitation of browserslist."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "package.json"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

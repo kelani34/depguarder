@@ -1,0 +1,123 @@
+import pacote from 'pacote';
+import { mkdir, rm, readdir, readFile } from 'fs/promises';
+import { join, dirname } from 'path';
+import { tmpdir } from 'os';
+import { existsSync } from 'fs';
+import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+export interface InspectionResult {
+    hasObfuscation: boolean;
+    suspiciousApis: string[];
+    envAccess: string[];
+    obfuscatedFiles: string[];
+}
+
+export async function inspectPackage(name: string, version: string): Promise<InspectionResult> {
+    const tempDir = join(tmpdir(), `depguarder-${name.replace(/\//g, '-')}-${version}`);
+    
+    try {
+        if (existsSync(tempDir)) {
+            await rm(tempDir, { recursive: true, force: true });
+        }
+        await mkdir(tempDir, { recursive: true });
+
+        await pacote.extract(`${name}@${version}`, tempDir);
+
+        if (isDockerAvailable()) {
+            return await inspectWithDocker(tempDir);
+        }
+
+        const result: InspectionResult = {
+            hasObfuscation: false,
+            suspiciousApis: [],
+            envAccess: [],
+            obfuscatedFiles: []
+        };
+
+        await analyzeDirectory(tempDir, result);
+        return result;
+    } finally {
+        await rm(tempDir, { recursive: true, force: true });
+    }
+}
+
+function isDockerAvailable(): boolean {
+    try {
+        execSync('docker ps', { stdio: 'ignore' });
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+async function inspectWithDocker(targetDir: string): Promise<InspectionResult> {
+    const sandboxScript = join(__dirname, '../sandbox/analyze.js');
+    
+    // We use a simple docker run command to mount the target directory and run the analysis script
+    // Note: In a real production tool, we would pre-build the image.
+    // For this prototype, we use the host's node to run the script inside a volume for safety.
+    try {
+        const output = execSync(
+            `docker run --rm -v "${targetDir}:/app/package-to-scan:ro" -v "${sandboxScript}:/app/analyze.js:ro" node:20-slim node /app/analyze.js`,
+            { encoding: 'utf8' }
+        );
+        return JSON.parse(output);
+    } catch (e: any) {
+        console.warn(`Docker analysis failed, falling back to host analysis: ${e.message}`);
+        const result: InspectionResult = {
+            hasObfuscation: false,
+            suspiciousApis: [],
+            envAccess: [],
+            obfuscatedFiles: []
+        };
+        await analyzeDirectory(targetDir, result);
+        return result;
+    }
+}
+
+async function analyzeDirectory(dir: string, result: InspectionResult) {
+    const entries = await readdir(dir, { withFileTypes: true });
+
+    for (const entry of entries) {
+        const fullPath = join(dir, entry.name);
+        if (entry.isDirectory()) {
+            await analyzeDirectory(fullPath, result);
+        } else if (entry.isFile() && (entry.name.endsWith('.js') || entry.name.endsWith('.ts') || entry.name.endsWith('.mjs'))) {
+            await analyzeFile(fullPath, result);
+        }
+    }
+}
+
+async function analyzeFile(filePath: string, result: InspectionResult) {
+    const content = await readFile(filePath, 'utf8');
+
+    const hexRegex = /\\x[0-9a-f]{2}/gi;
+    const hexMatches = content.match(hexRegex);
+    if (hexMatches && hexMatches.length > 50) {
+        result.hasObfuscation = true;
+        result.obfuscatedFiles.push(filePath);
+    }
+
+    if (content.includes('eval(') || content.includes('new Function(')) {
+        result.suspiciousApis.push('Dynamic execution (eval/Function)');
+    }
+
+    const apis = [
+        { name: 'child_process', regex: /child_process|spawn|exec/g },
+        { name: 'network', regex: /http\.request|https\.request|fetch|axios|node-fetch/g },
+        { name: 'filesystem-sensitive', regex: /\.ssh|passwd|shadow|credentials/g }
+    ];
+
+    for (const api of apis) {
+        if (api.regex.test(content)) {
+            result.suspiciousApis.push(api.name);
+        }
+    }
+
+    if (/process\.env/g.test(content)) {
+        result.envAccess.push('process.env access');
+    }
+}
