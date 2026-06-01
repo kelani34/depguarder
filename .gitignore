@@ -115,3 +115,5 @@ node_modules/
 .depguarder-cache/
 .depguarder-temp/
 .depguarder-reports/
+
+.internal-docs/
