@@ -4,9 +4,9 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "paths": {
-      "@depguarder/core": ["../core/src"],
-      "@depguarder/rules": ["../rules/src"],
-      "@depguarder/lockfile-parser": ["../lockfile-parser/src"]
+      "@depguarder/core": ["../core/src/index.ts"],
+      "@depguarder/rules": ["../rules/src/index.ts"],
+      "@depguarder/lockfile-parser": ["../lockfile-parser/src/index.ts"]
     }
   },
   "include": ["src/**/*"]

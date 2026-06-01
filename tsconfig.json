@@ -18,9 +18,9 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"],
     "paths": {
-      "@depguarder/core": ["packages/core/src"],
-      "@depguarder/rules": ["packages/rules/src"],
-      "@depguarder/lockfile-parser": ["packages/lockfile-parser/src"]
+      "@depguarder/core": ["packages/core/src/index.ts"],
+      "@depguarder/rules": ["packages/rules/src/index.ts"],
+      "@depguarder/lockfile-parser": ["packages/lockfile-parser/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "dist"]
