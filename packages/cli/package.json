@@ -1,0 +1,42 @@
+{
+  "name": "depguarder",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "bundle": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/depguarder.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bin": {
+    "depguarder": "dist/index.js"
+  },
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@depguarder/core": "^1.0.0",
+    "@depguarder/lockfile-parser": "^1.0.0",
+    "@depguarder/rules": "^1.0.0",
+    "commander": "^15.0.0",
+    "inquirer": "^14.0.2"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.9",
+    "@types/node": "^25.9.1",
+    "esbuild": "^0.28.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kelani34/depguarder.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ]
+}
