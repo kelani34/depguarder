@@ -66,7 +66,7 @@ function printReport(report: AnalysisReport) {
     console.log(`\n[${finding.severity.toUpperCase()}] ${finding.title}`);
     console.log(`Impact: +${finding.scoreImpact}`);
     console.log(`Evidence:`);
-    finding.evidence.forEach(e => console.log(`  - ${e}`));
+    finding.evidence.forEach((e: string) => console.log(`  - ${e}`));
     console.log(`Recommendation: ${finding.recommendation}`);
   }
 }

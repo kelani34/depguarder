@@ -69,7 +69,7 @@ export async function installCommand(packageName: string) {
 function printWarning(report: AnalysisReport) {
     console.log(`\n🚨 WARNING: ${report.packageName}@${report.version} has ${report.findings.length} significant finding(s).`);
     console.log(`Overall Risk: ${report.severity.toUpperCase()} (${report.score}/100)`);
-    report.findings.forEach(f => {
+    report.findings.forEach((f: any) => {
         console.log(`  - [${f.severity.toUpperCase()}] ${f.title}`);
     });
     console.log('');
