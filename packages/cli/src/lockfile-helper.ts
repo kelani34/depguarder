@@ -1,6 +1,8 @@
 import { join } from 'path';
 import { existsSync, readFileSync } from 'fs';
 import {
+    CanonicalLockfile,
+    LockfileType,
     parseNpmLockfile,
     parseNpmLockfileContent,
     parsePnpmLockfile,
@@ -9,13 +11,13 @@ import {
     parseYarnLockfileContent,
     parseYarnBerryLockfile,
     parseYarnBerryLockfileContent,
-    parseBunLockfile
+    parseBunLockfile,
+    parseBunLockfileContent
 } from '@depguarder/lockfile-parser';
-import { LockfileType } from '@depguarder/core';
 
 export interface LoadedLockfile {
     type: LockfileType;
-    data: any;
+    data: CanonicalLockfile;
 }
 
 export interface RemoteProjectFiles {
@@ -57,7 +59,7 @@ export function loadLockfile(cwd: string): LoadedLockfile {
 
 export function loadLockfileFromFiles(files: RemoteProjectFiles): LoadedLockfile {
     if (files['bun.lock']) {
-        throw new Error('Remote pre-clone inspection does not support bun.lock conversion. Clone the repository to run a full Bun project scan.');
+        return { type: 'bun', data: parseBunLockfileContent(files['bun.lock']) };
     }
     if (files['pnpm-lock.yaml']) {
         return { type: 'pnpm', data: parsePnpmLockfileContent(files['pnpm-lock.yaml']) };

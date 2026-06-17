@@ -16,8 +16,8 @@ export async function explainCommand(packageName: string, options: ExplainOption
     }
 
     const manifest = parseManifest(manifestPath);
-    const { type, data: lockfileData } = loadLockfile(process.cwd());
-    const graph = buildGraph(type === 'npm' ? lockfileData.packages : lockfileData, manifest, type);
+    const { data: lockfileData } = loadLockfile(process.cwd());
+    const graph = buildGraph(lockfileData, manifest);
 
     let targetId: string | undefined;
     for (const id of graph.nodes.keys()) {

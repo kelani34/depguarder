@@ -1,22 +1,49 @@
-import { execSync } from 'child_process';
-import pkg from '@yarnpkg/lockfile';
-const { parse } = pkg;
-import { dirname } from 'path';
+import { readFileSync } from 'fs';
+import { createCanonicalLockfile, createEmptyRoot, normalizeBunPackageResolution, packageId, stripJsonComments } from './utils.js';
+import { CanonicalLockfile } from './types.js';
 
-export function parseBunLockfile(path: string): any {
-  try {
-    // Bun can export its lockfile to Yarn v1 format using 'bun bun.lockb' 
-    // (even if the file is named bun.lock)
-    const yarnCompatibleText = execSync(`bun bun.lockb`, { 
-        encoding: 'utf8',
-        cwd: dirname(path)
-    });
-    const result = parse(yarnCompatibleText);
-    if (result.type !== 'success') {
-        throw new Error(`Failed to parse bun exported yarn lockfile`);
-    }
-    return result.object;
-  } catch (e: any) {
-    throw new Error(`Failed to parse bun.lock: ${e.message}. Ensure 'bun' is installed and run from a bun project directory.`);
-  }
+interface BunLockWorkspace {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+}
+
+interface BunLockFile {
+  lockfileVersion: number;
+  workspaces?: Record<string, BunLockWorkspace>;
+  packages?: Record<string, [string, Record<string, string>?, string?]>;
+}
+
+export function parseBunLockfile(path: string): CanonicalLockfile {
+  const content = readFileSync(path, 'utf8');
+  return parseBunLockfileContent(content);
+}
+
+export function parseBunLockfileContent(content: string): CanonicalLockfile {
+  const parsed = JSON.parse(stripJsonComments(content)) as BunLockFile;
+  const rootWorkspace = parsed.workspaces?.[''] || {};
+  const root = createEmptyRoot({
+    dependencies: rootWorkspace.dependencies,
+    devDependencies: rootWorkspace.devDependencies,
+    optionalDependencies: rootWorkspace.optionalDependencies,
+    peerDependencies: rootWorkspace.peerDependencies,
+  });
+
+  const packages = Object.entries(parsed.packages || {}).map(([name, value]) => {
+    const [resolution, dependencies = {}, integrity] = value;
+    const normalized = normalizeBunPackageResolution(name, resolution);
+
+    return {
+      id: packageId(name, normalized.version),
+      name,
+      version: normalized.version,
+      dependencies,
+      optionalDependencies: {},
+      resolved: normalized.resolved,
+      integrity,
+    };
+  });
+
+  return createCanonicalLockfile('bun', root, packages);
 }

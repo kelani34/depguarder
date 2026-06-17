@@ -1,4 +1,4 @@
-import { buildGraph, DependencyGraph, inspectPackage, LockfileType, Manifest, parseManifest } from '@depguarder/core';
+import { buildGraph, CanonicalLockfile, DependencyGraph, inspectPackage, LockfileType, Manifest, parseManifest } from '@depguarder/core';
 import { fetchMetadata, createDefaultEngine, AnalysisReport } from '@depguarder/rules';
 import { existsSync, writeFileSync } from 'fs';
 import { join } from 'path';
@@ -31,10 +31,10 @@ export async function auditProjectDirectory(projectDir: string, options: AuditOp
 export async function auditResolvedProject(
   manifest: Manifest,
   type: LockfileType,
-  lockfileData: any,
+  lockfileData: CanonicalLockfile,
   options: AuditOptions
 ): Promise<AuditResult> {
-  const graph = buildGraph(type === 'npm' ? lockfileData.packages : lockfileData, manifest, type);
+  const graph = buildGraph(lockfileData, manifest);
   const reports = await auditGraph(graph, options);
   const summary = generateSummary(reports);
 

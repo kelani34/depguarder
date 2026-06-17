@@ -11,8 +11,8 @@ export async function whyCommand(packageName: string) {
     }
 
     const manifest = parseManifest(manifestPath);
-    const { type, data: lockfileData } = loadLockfile(process.cwd());
-    const graph = buildGraph(type === 'npm' ? lockfileData.packages : lockfileData, manifest, type);
+    const { data: lockfileData } = loadLockfile(process.cwd());
+    const graph = buildGraph(lockfileData, manifest);
 
     console.log(`\n🤔 Finding paths to ${packageName}...`);
 

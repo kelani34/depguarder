@@ -21,7 +21,7 @@ async function run() {
 
     const manifest = parseManifest(manifestPath);
     const lockfile = parseNpmLockfile(lockfilePath);
-    const graph = buildGraph(lockfile.packages, manifest);
+    const graph = buildGraph(lockfile, manifest);
 
     core.info(`Auditing ${graph.nodes.size - 1} packages...`);
     

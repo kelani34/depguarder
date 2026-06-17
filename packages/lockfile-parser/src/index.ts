@@ -1,3 +1,4 @@
+export * from './types.js';
 export * from './npm.js';
 export * from './pnpm.js';
 export * from './yarn.js';

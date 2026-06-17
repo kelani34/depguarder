@@ -1,11 +1,6 @@
-import { CanonicalLockfile } from './lockfile.js';
-import { Manifest } from './manifest.js';
-import { DependencyGraph, DependencyNode } from './graph.js';
-
-export function buildGraph(lockfile: CanonicalLockfile, manifest: Manifest): DependencyGraph {
-    const nodes = new Map<string, DependencyNode>();
+export function buildGraph(lockfile, manifest) {
+    const nodes = new Map();
     const rootNodeId = `${manifest.name}@${manifest.version || '0.0.0'}`;
-
     nodes.set(rootNodeId, {
         name: manifest.name,
         version: manifest.version || '0.0.0',
@@ -13,8 +8,7 @@ export function buildGraph(lockfile: CanonicalLockfile, manifest: Manifest): Dep
         isTransitive: false,
         dependencies: new Set(),
     });
-
-    const rootNode = nodes.get(rootNodeId)!;
+    const rootNode = nodes.get(rootNodeId);
     const directDeps = {
         ...(manifest.dependencies || {}),
         ...(manifest.devDependencies || {}),
@@ -25,14 +19,12 @@ export function buildGraph(lockfile: CanonicalLockfile, manifest: Manifest): Dep
         ...lockfile.root.optionalDependencies,
         ...lockfile.root.peerDependencies,
     };
-
     for (const [depName, depInfo] of Object.entries(directDeps)) {
         const resolvedId = resolvePackageId(lockfile, depName, String(depInfo));
         if (resolvedId) {
             rootNode.dependencies.add(resolvedId);
         }
     }
-
     for (const pkg of lockfile.packages.values()) {
         const id = pkg.id;
         if (!nodes.has(id)) {
@@ -46,8 +38,7 @@ export function buildGraph(lockfile: CanonicalLockfile, manifest: Manifest): Dep
                 dependencies: new Set(),
             });
         }
-
-        const node = nodes.get(id)!;
+        const node = nodes.get(id);
         for (const [depName, depRef] of Object.entries({
             ...pkg.dependencies,
             ...pkg.optionalDependencies,
@@ -58,43 +49,38 @@ export function buildGraph(lockfile: CanonicalLockfile, manifest: Manifest): Dep
             }
         }
     }
-
     return finalizeGraph(nodes, rootNodeId, manifest);
 }
-
-function resolvePackageId(lockfile: CanonicalLockfile, name: string, reference: string): string | null {
+function resolvePackageId(lockfile, name, reference) {
     const exactId = `${name}@${reference}`;
     if (lockfile.packages.has(exactId)) {
         return exactId;
     }
-
     const candidates = Array.from(lockfile.packages.values()).filter((pkg) => pkg.name === name);
-    if (candidates.length === 0) return null;
-    if (candidates.length === 1) return candidates[0].id;
-
+    if (candidates.length === 0)
+        return null;
+    if (candidates.length === 1)
+        return candidates[0].id;
     const exactVersion = candidates.find((pkg) => pkg.version === reference);
-    if (exactVersion) return exactVersion.id;
-
+    if (exactVersion)
+        return exactVersion.id;
     const byResolved = candidates.find((pkg) => pkg.resolved === reference || pkg.resolved === `${name}@${reference}`);
-    if (byResolved) return byResolved.id;
-
+    if (byResolved)
+        return byResolved.id;
     const normalizedReference = reference.replace(/^npm:/, '');
-    const bySuffix = candidates.find((pkg) =>
-        pkg.id === `${name}@${normalizedReference}` ||
-        pkg.version === normalizedReference
-    );
-    if (bySuffix) return bySuffix.id;
-
+    const bySuffix = candidates.find((pkg) => pkg.id === `${name}@${normalizedReference}` ||
+        pkg.version === normalizedReference);
+    if (bySuffix)
+        return bySuffix.id;
     return candidates[0].id;
 }
-
-function finalizeGraph(nodes: Map<string, DependencyNode>, rootNodeId: string, manifest: Manifest): DependencyGraph {
+function finalizeGraph(nodes, rootNodeId, manifest) {
     const devDeps = Object.keys(manifest.devDependencies || {});
     const prodDeps = Object.keys(manifest.dependencies || {});
-    const visited = new Set<string>();
-
-    function markDev(id: string) {
-        if (visited.has(id)) return;
+    const visited = new Set();
+    function markDev(id) {
+        if (visited.has(id))
+            return;
         visited.add(id);
         const node = nodes.get(id);
         if (node) {
@@ -102,7 +88,6 @@ function finalizeGraph(nodes: Map<string, DependencyNode>, rootNodeId: string, m
             node.dependencies.forEach(depId => markDev(depId));
         }
     }
-
     const rootNode = nodes.get(rootNodeId);
     if (rootNode) {
         rootNode.dependencies.forEach(depId => {
@@ -112,9 +97,9 @@ function finalizeGraph(nodes: Map<string, DependencyNode>, rootNodeId: string, m
             }
         });
     }
-
     return {
         root: rootNodeId,
         nodes,
     };
 }
+//# sourceMappingURL=graph-builder.js.map
