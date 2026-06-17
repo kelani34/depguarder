@@ -1,6 +1,6 @@
-import { fetchMetadata, createDefaultEngine, AnalysisReport } from '@depguarder/rules';
+import { fetchMetadata, createDefaultEngine, AnalysisReport, resolvePackageGraph } from '@depguarder/rules';
 import { loadLockfile } from '../lockfile-helper.js';
-import { execSync, spawn } from 'child_process';
+import { spawn } from 'child_process';
 import inquirer from 'inquirer';
 
 export async function installCommand(packageName: string) {
@@ -21,18 +21,28 @@ export async function installCommand(packageName: string) {
     }
 
     console.log(`\n🛡️ DepGuarder Pre-install Audit: ${name}@${version}`);
-    
-    const metadata = await fetchMetadata(name, version);
-    const engine = createDefaultEngine();
-    const report = engine.analyze(metadata);
 
-    if (report.severity === 'critical' || report.severity === 'high') {
-        printWarning(report);
+    console.log(`\n🔍 Resolving dependency graph before install...`);
+    const graph = await resolvePackageGraph(name, version);
+    const engine = createDefaultEngine();
+
+    const reports: AnalysisReport[] = [];
+    for (const node of graph.nodes.values()) {
+      const metadata = await fetchMetadata(node.name, node.version);
+      reports.push(engine.analyze(metadata));
+    }
+
+    const riskyReports = reports
+      .filter((report) => report.severity === 'critical' || report.severity === 'high')
+      .sort((a, b) => b.score - a.score);
+
+    if (riskyReports.length > 0) {
+        printWarnings(riskyReports, graph);
         const { proceed } = await inquirer.prompt([
             {
                 type: 'confirm',
                 name: 'proceed',
-                message: `This package has a ${report.severity.toUpperCase()} risk score. Do you still want to install it?`,
+                message: `Resolved dependency graph contains ${riskyReports.length} HIGH/CRITICAL package risks. Do you still want to install it?`,
                 default: false
             }
         ]);
@@ -41,10 +51,10 @@ export async function installCommand(packageName: string) {
             console.log('\n❌ Installation aborted by user.');
             process.exit(0);
         }
-    } else if (report.findings.length > 0) {
-        console.log(`\n⚠️ Minor risks found (Score: ${report.score}/100). Proceeding...`);
+    } else if (reports.some((report) => report.findings.length > 0)) {
+        console.log('\n⚠️ Minor risks found in the resolved dependency graph. Proceeding...');
     } else {
-        console.log('\n✅ No risks detected for this package.');
+        console.log('\n✅ No risks detected in the resolved dependency graph.');
     }
 
     // Determine package manager and proceed
@@ -66,13 +76,20 @@ export async function installCommand(packageName: string) {
   }
 }
 
-function printWarning(report: AnalysisReport) {
-    console.log(`\n🚨 WARNING: ${report.packageName}@${report.version} has ${report.findings.length} significant finding(s).`);
-    console.log(`Overall Risk: ${report.severity.toUpperCase()} (${report.score}/100)`);
-    report.findings.forEach((f: any) => {
-        console.log(`  - [${f.severity.toUpperCase()}] ${f.title}`);
-    });
-    console.log('');
+function printWarnings(reports: AnalysisReport[], graph: Awaited<ReturnType<typeof resolvePackageGraph>>) {
+    console.log(`\n🚨 WARNING: ${reports.length} high-risk package(s) detected before install.`);
+
+    for (const report of reports.slice(0, 10)) {
+        console.log(`\n[${report.severity.toUpperCase()}] ${report.packageName}@${report.version} (${report.score}/100)`);
+        report.findings.forEach((finding) => {
+            console.log(`  - [${finding.severity.toUpperCase()}] ${finding.title}`);
+        });
+
+        const path = findPathToPackage(graph, `${report.packageName}@${report.version}`);
+        if (path) {
+            console.log(`  Path: ${path.join(' -> ')}`);
+        }
+    }
 }
 
 function getInstallCommand(type: string, pkg: string): string {
@@ -83,4 +100,31 @@ function getInstallCommand(type: string, pkg: string): string {
         case 'bun': return `bun add ${pkg}`;
         default: return `npm install ${pkg}`;
     }
+}
+
+function findPathToPackage(graph: Awaited<ReturnType<typeof resolvePackageGraph>>, targetId: string): string[] | null {
+    const visited = new Set<string>();
+
+    function dfs(currentId: string, path: string[]): string[] | null {
+        if (visited.has(currentId)) return null;
+        visited.add(currentId);
+
+        const node = graph.nodes.get(currentId);
+        if (!node) return null;
+
+        const label = `${node.name}@${node.version}`;
+        const nextPath = [...path, label];
+        if (currentId === targetId) {
+            return nextPath;
+        }
+
+        for (const depId of node.dependencies) {
+            const found = dfs(depId, nextPath);
+            if (found) return found;
+        }
+
+        return null;
+    }
+
+    return dfs(graph.root, []);
 }

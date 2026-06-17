@@ -25,11 +25,24 @@ export interface AnalysisReport {
   severity: Severity;
 }
 
-export function calculateSeverity(score: number): Severity {
-  if (score >= 75) return 'critical';
-  if (score >= 50) return 'high';
-  if (score >= 25) return 'medium';
-  return 'low';
+const SEVERITY_ORDER: Severity[] = ['low', 'medium', 'high', 'critical'];
+
+export function maxSeverity(a: Severity, b: Severity): Severity {
+  return SEVERITY_ORDER[Math.max(SEVERITY_ORDER.indexOf(a), SEVERITY_ORDER.indexOf(b))];
+}
+
+export function calculateSeverity(score: number, findings: RuleFinding[] = []): Severity {
+  let severity: Severity = 'low';
+
+  if (score >= 75) severity = 'critical';
+  else if (score >= 50) severity = 'high';
+  else if (score >= 25) severity = 'medium';
+
+  for (const finding of findings) {
+    severity = maxSeverity(severity, finding.severity);
+  }
+
+  return severity;
 }
 
 export class RuleEngine {
@@ -59,7 +72,7 @@ export class RuleEngine {
       version: metadata.version,
       findings,
       score: finalScore,
-      severity: calculateSeverity(finalScore),
+      severity: calculateSeverity(finalScore, findings),
     };
   }
 }

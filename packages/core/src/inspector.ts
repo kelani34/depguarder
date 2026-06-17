@@ -13,6 +13,12 @@ export interface InspectionResult {
     suspiciousApis: string[];
     envAccess: string[];
     obfuscatedFiles: string[];
+    tlsBypass: boolean;
+    hiddenExecution: boolean;
+    detachedExecution: boolean;
+    remoteIpAccess: boolean;
+    homeDirectoryWrites: boolean;
+    selfDelete: boolean;
 }
 
 export async function inspectPackage(name: string, version: string): Promise<InspectionResult> {
@@ -34,7 +40,13 @@ export async function inspectPackage(name: string, version: string): Promise<Ins
             hasObfuscation: false,
             suspiciousApis: [],
             envAccess: [],
-            obfuscatedFiles: []
+            obfuscatedFiles: [],
+            tlsBypass: false,
+            hiddenExecution: false,
+            detachedExecution: false,
+            remoteIpAccess: false,
+            homeDirectoryWrites: false,
+            selfDelete: false,
         };
 
         await analyzeDirectory(tempDir, result);
@@ -71,7 +83,13 @@ async function inspectWithDocker(targetDir: string): Promise<InspectionResult> {
             hasObfuscation: false,
             suspiciousApis: [],
             envAccess: [],
-            obfuscatedFiles: []
+            obfuscatedFiles: [],
+            tlsBypass: false,
+            hiddenExecution: false,
+            detachedExecution: false,
+            remoteIpAccess: false,
+            homeDirectoryWrites: false,
+            selfDelete: false,
         };
         await analyzeDirectory(targetDir, result);
         return result;
@@ -119,5 +137,29 @@ async function analyzeFile(filePath: string, result: InspectionResult) {
 
     if (/process\.env/g.test(content)) {
         result.envAccess.push('process.env access');
+    }
+
+    if (/NODE_TLS_REJECT_UNAUTHORIZED|rejectUnauthorized\s*:\s*false/g.test(content)) {
+        result.tlsBypass = true;
+    }
+
+    if (/windowsHide\s*:\s*true/g.test(content)) {
+        result.hiddenExecution = true;
+    }
+
+    if (/detached\s*:\s*true/g.test(content)) {
+        result.detachedExecution = true;
+    }
+
+    if (/\b(?:\d{1,3}\.){3}\d{1,3}\b/g.test(content)) {
+        result.remoteIpAccess = true;
+    }
+
+    if (/\.pkg_history|\.pkg_logs|os\.homedir\(|process\.env\.(HOME|USERPROFILE)|~\//g.test(content)) {
+        result.homeDirectoryWrites = true;
+    }
+
+    if(/unlinkSync|rmSync|unlink\(/g.test(content) && /__filename|setup\.cjs|\.js['"`]/g.test(content)) {
+        result.selfDelete = true;
     }
 }

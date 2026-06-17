@@ -8,7 +8,17 @@ export class BehavioralRule implements Rule {
   run(metadata: PackageMetadata): RuleFinding | null {
     if (!metadata.inspection) return null;
 
-    const { hasObfuscation, suspiciousApis, envAccess } = metadata.inspection;
+    const {
+      hasObfuscation,
+      suspiciousApis,
+      envAccess,
+      tlsBypass,
+      hiddenExecution,
+      detachedExecution,
+      remoteIpAccess,
+      homeDirectoryWrites,
+      selfDelete,
+    } = metadata.inspection;
     const findings: string[] = [];
     let scoreImpact = 0;
 
@@ -24,6 +34,31 @@ export class BehavioralRule implements Rule {
 
     if (envAccess.length > 0) {
         findings.push('Environment variable access detected');
+        scoreImpact += 15;
+    }
+
+    if (tlsBypass) {
+        findings.push('TLS verification bypass detected');
+        scoreImpact += 25;
+    }
+
+    if (hiddenExecution || detachedExecution) {
+        findings.push('Hidden or detached process execution detected');
+        scoreImpact += 20;
+    }
+
+    if (remoteIpAccess) {
+        findings.push('Literal remote IP communication detected');
+        scoreImpact += 20;
+    }
+
+    if (homeDirectoryWrites) {
+        findings.push('Home-directory marker or persistence writes detected');
+        scoreImpact += 15;
+    }
+
+    if (selfDelete) {
+        findings.push('Self-deleting installer behavior detected');
         scoreImpact += 15;
     }
 
