@@ -29,14 +29,20 @@ depguarder clone https://github.com/example/project.git
 
 For supported GitHub and GitLab repositories, DepGuarder will:
 1. Attempt to detect the default branch.
-2. Fetch `package.json` and a supported lockfile remotely.
-3. Run a dependency audit before clone when enough metadata is available.
-4. Ask for confirmation if risky dependencies are detected.
-5. Clone the repository and run a full local scan afterwards.
+2. Discover JavaScript project roots by locating `package.json` files.
+3. Fetch a supported lockfile for each discovered project directory when available.
+4. Run dependency audits before clone for every resolvable project path.
+5. Ask for confirmation if risky dependencies are detected.
+6. Clone the repository and run full local scans afterwards.
 
 For private repositories, set one of:
 - `GITHUB_TOKEN` or `GH_TOKEN`
 - `GITLAB_TOKEN` or `GL_TOKEN`
+
+For monorepos:
+- results are shown per project path
+- project roots without supported lockfiles are reported as warnings instead of aborting the whole repository preflight
+- post-clone scanning will attempt each discovered local project path independently
 
 ## 4. Runtime Monitoring (`depguarder run`)
 Malicious code often hides in `postinstall` scripts or development dependencies. To detect these, wrap your dev commands:

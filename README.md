@@ -16,6 +16,7 @@ DepGuarder is different. It focuses on **Trust Signals** and **Behavioral Analys
 - **Behavioral Intelligence**: Detects obfuscation, suspicious system calls, TLS bypasses, hidden execution, and suspicious persistence behavior.
 - **Proactive Protection**: Audit resolved dependency graphs *before* you install them with the `install` command.
 - **Repository Preflight**: Probe a repository before cloning it, then run a full project scan after clone.
+- **Monorepo-Aware**: Discover and audit multiple JavaScript project roots in a single repository.
 - **Runtime Guard**: Monitor your dev server in real-time to catch malicious processes spawning from your dependencies.
 
 ---
@@ -27,6 +28,7 @@ DepGuarder is different. It focuses on **Trust Signals** and **Behavioral Analys
 - **Explainability**: `why <package>` traces exactly how a risky dependency entered your project.
 - **Proactive Gateway**: `install <package>` audits the full resolved dependency graph before triggering the package manager.
 - **Pre-Clone Inspection**: `clone <repo-url>` can preflight public and private GitHub/GitLab repos before cloning.
+- **Workspace Discovery**: `clone <repo-url>` can scan multiple project roots in monorepos instead of assuming repo root only.
 - **Runtime Monitoring**: `run <command>` watches your entire process tree for suspicious activity (e.g., `curl`, `nc`).
 - **CI/CD Ready**: Official GitHub Action for PR security auditing.
 
@@ -87,6 +89,12 @@ depguarder clone https://github.com/example/project.git
 depguarder clone git@github.com:example/project.git project-local
 ```
 
+If the repository is a monorepo, DepGuarder will:
+- discover each directory containing a `package.json`
+- look for a supported lockfile in the same directory
+- preflight every resolvable project path before clone
+- run per-project scans after clone
+
 ### 7. Secure Development
 ```bash
 depguarder run npm run dev
@@ -115,7 +123,8 @@ depguarder clone https://gitlab.com/your-group/private-repo.git
 Notes:
 - HTTPS clone URLs can reuse the token for authenticated `git clone`.
 - SSH clone URLs continue to use your existing SSH credentials, but the preflight dependency fetch still uses the provider token when needed.
-- If no supported lockfile is available remotely, DepGuarder will warn and fall back to a full local scan after clone.
+- If no supported lockfile is available for a discovered project path, DepGuarder will warn for that project and fall back to local post-clone scanning where possible.
+- For monorepos, preflight results are reported per project path, not just once for the repository root.
 
 ---
 
