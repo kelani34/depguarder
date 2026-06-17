@@ -23,6 +23,10 @@ export type NpmLockfile = z.infer<typeof NpmLockfileSchema>;
 
 export function parseNpmLockfile(path: string): NpmLockfile {
   const content = readFileSync(path, 'utf8');
+  return parseNpmLockfileContent(content);
+}
+
+export function parseNpmLockfileContent(content: string): NpmLockfile {
   const json = JSON.parse(content);
   return NpmLockfileSchema.parse(json);
 }

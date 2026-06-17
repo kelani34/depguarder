@@ -15,6 +15,10 @@ export type Manifest = z.infer<typeof ManifestSchema>;
 
 export function parseManifest(path: string): Manifest {
   const content = readFileSync(path, 'utf8');
+  return parseManifestContent(content);
+}
+
+export function parseManifestContent(content: string): Manifest {
   const json = JSON.parse(content);
   return ManifestSchema.parse(json);
 }

@@ -4,9 +4,13 @@ const { parse } = pkg;
 
 export function parseYarnLockfile(path: string): any {
   const content = readFileSync(path, 'utf8');
+  return parseYarnLockfileContent(content, path);
+}
+
+export function parseYarnLockfileContent(content: string, source = 'yarn.lock'): any {
   const result = parse(content);
   if (result.type !== 'success') {
-      throw new Error(`Failed to parse yarn.lock at ${path}`);
+      throw new Error(`Failed to parse yarn.lock at ${source}`);
   }
   return result.object;
 }

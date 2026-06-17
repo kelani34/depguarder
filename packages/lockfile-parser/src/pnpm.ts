@@ -12,5 +12,9 @@ export type PnpmLockfile = z.infer<typeof PnpmLockfileSchema>;
 
 export function parsePnpmLockfile(path: string): PnpmLockfile {
   const content = readFileSync(path, 'utf8');
+  return parsePnpmLockfileContent(content);
+}
+
+export function parsePnpmLockfileContent(content: string): PnpmLockfile {
   return parse(content);
 }

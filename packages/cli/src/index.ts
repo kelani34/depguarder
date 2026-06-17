@@ -8,6 +8,7 @@ import { scanCommand } from './commands/scan.js';
 import { whyCommand } from './commands/why.js';
 import { explainCommand } from './commands/explain.js';
 import { installCommand } from './commands/install.js';
+import { cloneCommand } from './commands/clone.js';
 import { runCommand } from './commands/run.js';
 import { initCommand } from './commands/init.js';
 
@@ -53,6 +54,12 @@ program
   .command('install <package>')
   .description('Proactively audit and install a package')
   .action(installCommand);
+
+program
+  .command('clone <repo-url> [directory]')
+  .description('Probe a repository before clone, then clone and scan the project')
+  .option('-p, --paranoid', 'Deep behavioral analysis of packages')
+  .action((repoUrl, directory, options) => cloneCommand(repoUrl, directory, options));
 
 program
   .command('run <command> [args...]')
