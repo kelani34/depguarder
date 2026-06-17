@@ -13,18 +13,20 @@ Modern supply chain attacks don't just use known vulnerabilities (CVEs). They us
 
 DepGuarder is different. It focuses on **Trust Signals** and **Behavioral Analysis**:
 - **Lockfile-First**: If your package manager resolved it, DepGuarder finds it—including hidden transitive dependencies.
-- **Behavioral Intelligence**: Detects obfuscation, suspicious system calls, and unauthorized environment access.
-- **Proactive Protection**: Audit packages *before* you install them with the `install` command.
+- **Behavioral Intelligence**: Detects obfuscation, suspicious system calls, TLS bypasses, hidden execution, and suspicious persistence behavior.
+- **Proactive Protection**: Audit resolved dependency graphs *before* you install them with the `install` command.
+- **Repository Preflight**: Probe a repository before cloning it, then run a full project scan after clone.
 - **Runtime Guard**: Monitor your dev server in real-time to catch malicious processes spawning from your dependencies.
 
 ---
 
 ## 🚀 Key Features
 
-- **Multi-Ecosystem**: Native support for **npm**, **pnpm**, **Yarn (v1 & Berry)**, and **Bun**.
+- **Multi-Ecosystem**: Native support for **npm**, **pnpm**, **Yarn (v1 & Berry)**, and **Bun** lockfiles.
 - **Deep Audit**: `scan --paranoid` downloads and inspects package tarballs for obfuscation.
 - **Explainability**: `why <package>` traces exactly how a risky dependency entered your project.
-- **Proactive Gateway**: `install <package>` audits risk before triggering the package manager.
+- **Proactive Gateway**: `install <package>` audits the full resolved dependency graph before triggering the package manager.
+- **Pre-Clone Inspection**: `clone <repo-url>` can preflight public and private GitHub/GitLab repos before cloning.
 - **Runtime Monitoring**: `run <command>` watches your entire process tree for suspicious activity (e.g., `curl`, `nc`).
 - **CI/CD Ready**: Official GitHub Action for PR security auditing.
 
@@ -33,9 +35,17 @@ DepGuarder is different. It focuses on **Trust Signals** and **Behavioral Analys
 ## 📦 Installation
 
 ```bash
-# Using npm
+# Requires Node.js >= 22.12.0
 npm install -g depguarder
+```
+
+```bash
+# One-off usage
 npx depguarder scan
+```
+
+```bash
+# Global install with Bun
 bun add -g depguarder
 ```
 
@@ -58,32 +68,72 @@ depguarder scan --paranoid
 depguarder why lodash
 ```
 
-### 4. Proactive Install
+### 4. Explain a risky package
+```bash
+depguarder explain easy-day-js --paranoid
+```
+
+### 5. Proactive Install
 ```bash
 depguarder install express
 ```
 
-### 5. Secure Development
+### 6. Pre-clone a repository, then scan it
+```bash
+depguarder clone https://github.com/example/project.git
+```
+
+```bash
+depguarder clone git@github.com:example/project.git project-local
+```
+
+### 7. Secure Development
 ```bash
 depguarder run npm run dev
 ```
 
 ---
 
+## 🔐 Private Repository Preflight
+
+`depguarder clone` can inspect private repositories before clone for:
+- **GitHub** using `GITHUB_TOKEN` or `GH_TOKEN`
+- **GitLab** using `GITLAB_TOKEN` or `GL_TOKEN`
+
+Examples:
+
+```bash
+export GITHUB_TOKEN=ghp_xxx
+depguarder clone https://github.com/your-org/private-repo.git
+```
+
+```bash
+export GITLAB_TOKEN=glpat-xxx
+depguarder clone https://gitlab.com/your-group/private-repo.git
+```
+
+Notes:
+- HTTPS clone URLs can reuse the token for authenticated `git clone`.
+- SSH clone URLs continue to use your existing SSH credentials, but the preflight dependency fetch still uses the provider token when needed.
+- If no supported lockfile is available remotely, DepGuarder will warn and fall back to a full local scan after clone.
+
+---
+
 ## 🛡️ Security Rules
 
 DepGuarder evaluates risk using a 0-100 scoring model based on:
-- **Typosquatting**: Detection of popular package imitations.
-- **Install Scripts**: Flagging potentially dangerous `postinstall` hooks.
-- **Maintainer Reputation**: Identification of single-maintainer or new packages.
+- **Typosquatting**: Dynamic detection of suspicious package names using ecosystem similarity signals.
+- **Install Scripts**: Flagging lifecycle scripts and suspicious script contents before install.
+- **Maintainer Reputation**: Identification of single-maintainer packages.
+- **Fresh Releases**: Warning on newly published releases and very new packages.
 - **Download Trends**: Analysis of community trust signals.
-- **Static Analysis**: Real-time detection of obfuscated code and sensitive API usage.
+- **Static Analysis**: Detection of obfuscated code, suspicious APIs, env access, TLS bypass, hidden execution, remote IP usage, and self-delete patterns.
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Development Roadmap](.internal-docs/planning.md) for current priorities.
+We welcome contributions. Open an issue or pull request with the change you want to make and include test coverage when you add parser or rule logic.
 
 ---
 
