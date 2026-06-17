@@ -151,6 +151,12 @@ describe('clone command helpers', () => {
       .mockResolvedValueOnce(mockResponse({
         ok: true,
         status: 200,
+        json: async () => ({ tree: [{ path: 'package.json', type: 'blob' }, { path: 'package-lock.json', type: 'blob' }] }),
+        text: async () => '',
+      }) as Response)
+      .mockResolvedValueOnce(mockResponse({
+        ok: true,
+        status: 200,
         text: async () => JSON.stringify({ name: 'sample-app', version: '1.0.0', dependencies: { 'left-pad': '^1.0.0' } }),
       }) as Response)
       .mockResolvedValueOnce(mockResponse({
@@ -161,8 +167,9 @@ describe('clone command helpers', () => {
 
     const result = await __test__.probeRemoteRepository('https://github.com/openai/depguarder.git', {});
     expect(result.branch).toBe('main');
-    expect(result.lockfileType).toBe('package-lock.json');
-    expect(result.audit).toBeDefined();
+    expect(result.projects).toHaveLength(1);
+    expect(result.projects[0].lockfileType).toBe('package-lock.json');
+    expect(result.projects[0].audit).toBeDefined();
     expect(result.warning).toBeUndefined();
   });
 
@@ -177,16 +184,18 @@ describe('clone command helpers', () => {
       .mockResolvedValueOnce(mockResponse({
         ok: true,
         status: 200,
-        text: async () => JSON.stringify({ name: 'sample-app', version: '1.0.0' }),
+        json: async () => ({ tree: [{ path: 'package.json', type: 'blob' }] }),
+        text: async () => '',
       }) as Response)
-      .mockResolvedValueOnce(mockResponse({ status: 404, ok: false, statusText: 'Not Found', text: async () => '' }) as Response)
-      .mockResolvedValueOnce(mockResponse({ status: 404, ok: false, statusText: 'Not Found', text: async () => '' }) as Response)
-      .mockResolvedValueOnce(mockResponse({ status: 404, ok: false, statusText: 'Not Found', text: async () => '' }) as Response)
-      .mockResolvedValueOnce(mockResponse({ status: 404, ok: false, statusText: 'Not Found', text: async () => '' }) as Response);
+      .mockResolvedValueOnce(mockResponse({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ name: 'sample-app', version: '1.0.0' }),
+      }) as Response);
 
     const result = await __test__.probeRemoteRepository('https://github.com/openai/depguarder.git', {});
-    expect(result.audit).toBeUndefined();
-    expect(result.warning).toContain('No supported lockfile');
+    expect(result.projects[0].audit).toBeUndefined();
+    expect(result.projects[0].warning).toContain('No supported lockfile');
   });
 
   it('surfaces access-denied errors for private repositories without a token', async () => {
@@ -200,6 +209,44 @@ describe('clone command helpers', () => {
     await expect(__test__.fetchText('https://api.github.com/repos/openai/private/contents/package.json', {})).rejects.toThrow(
       'Access denied while fetching'
     );
+  });
+
+  it('discovers multiple remote project candidates in a monorepo', () => {
+    const projects = __test__.discoverRemoteProjectCandidates([
+      'package.json',
+      'package-lock.json',
+      'packages/web/package.json',
+      'packages/web/pnpm-lock.yaml',
+      'packages/shared/package.json',
+      'README.md',
+    ]);
+
+    expect(projects).toEqual([
+      { path: '.', lockfileName: 'package-lock.json' },
+      { path: 'packages/shared', lockfileName: undefined },
+      { path: 'packages/web', lockfileName: 'pnpm-lock.yaml' },
+    ]);
+  });
+
+  it('lists repository files from the GitHub tree API', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        tree: [
+          { path: 'package.json', type: 'blob' },
+          { path: 'packages/web/package.json', type: 'blob' },
+          { path: 'packages', type: 'tree' },
+        ],
+      }),
+      text: async () => '',
+    }) as Response);
+
+    const provider = __test__.parseHostedRepository('https://github.com/openai/depguarder.git');
+    await expect(__test__.listRepositoryFiles(provider!, 'main')).resolves.toEqual([
+      'package.json',
+      'packages/web/package.json',
+    ]);
   });
 });
 
