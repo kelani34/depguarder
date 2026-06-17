@@ -305,3 +305,15 @@ function bearerHeaders(token?: string): Record<string, string> {
   }
   return { Authorization: `Bearer ${token}` };
 }
+
+export const __test__ = {
+  parseHostedRepository,
+  probeRemoteRepository,
+  detectDefaultBranch,
+  fetchText,
+  getProviderToken,
+  basicAuthHeaderValue,
+  buildHttpsCloneArgs,
+  gitLsRemoteArgs,
+  bearerHeaders,
+};
