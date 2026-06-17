@@ -11,8 +11,12 @@ import { installCommand } from './commands/install.js';
 import { runCommand } from './commands/run.js';
 import { initCommand } from './commands/init.js';
 
+const MIN_NODE_VERSION = { major: 22, minor: 12, patch: 0 };
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf8'));
+
+assertSupportedNodeVersion();
 
 const program = new Command();
 
@@ -61,3 +65,23 @@ program
   .action(initCommand);
 
 program.parse();
+
+function assertSupportedNodeVersion() {
+  const version = process.versions.node;
+  const [major, minor, patch] = version.split('.').map(Number);
+  const unsupported =
+    major < MIN_NODE_VERSION.major ||
+    (major === MIN_NODE_VERSION.major && minor < MIN_NODE_VERSION.minor) ||
+    (major === MIN_NODE_VERSION.major && minor === MIN_NODE_VERSION.minor && patch < MIN_NODE_VERSION.patch);
+
+  if (!unsupported) {
+    return;
+  }
+
+  console.error(
+    `DepGuarder requires Node.js >= ${MIN_NODE_VERSION.major}.${MIN_NODE_VERSION.minor}.${MIN_NODE_VERSION.patch}. ` +
+    `Current version: ${version}. ` +
+    `Upgrade Node.js or use an older compatible release of DepGuarder.`
+  );
+  process.exit(1);
+}
